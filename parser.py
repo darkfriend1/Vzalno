@@ -14,8 +14,8 @@ import os
 URLS_FILE = "urls.json"
 OUTPUT_FILE = "sub.txt"
 
-MAX_CONFIGS = 78
-PING_TIMEOUT = 1.5
+MAX_CONFIGS = 350
+PING_TIMEOUT = 2
 CHECK_ALIVE = True
 
 PROTOCOLS = (
