@@ -16,7 +16,7 @@ OUTPUT_FILE = "sub.txt"
 URLS_FILE = "urls.json"
 
 # 👇 СКОЛЬКО КОНФИГОВ БУДЕТ В ПОДПИСКЕ
-MAX_CONFIGS = 92
+MAX_CONFIGS = 300
 
 # 👇 ПРОВЕРКА РАБОТОСПОСОБНОСТИ
 CHECK_ALIVE = True
