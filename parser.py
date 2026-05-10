@@ -22,7 +22,7 @@ MAX_CONFIGS = 300
 CHECK_ALIVE = True
 
 # 👇 ТАЙМАУТ ПРОВЕРКИ
-PING_TIMEOUT = 1.5
+PING_TIMEOUT = 2
 
 # =========================
 # ПРОТОКОЛЫ
