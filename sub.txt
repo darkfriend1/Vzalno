@@ -1,1 +1,2 @@
-
+#hide-settings: 1
+#subscription-crypto: 1
