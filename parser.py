@@ -9,7 +9,7 @@ import socket
 
 SUB_URL = "https://raw.githubusercontent.com/darkfriend1/vzalno/main/sub.txt"
 
-MAX_CONFIGS = 78   # 👈 сколько конфигов в подписке
+MAX_CONFIGS = 300   # 👈 сколько конфигов в подписке
 
 PROTOCOLS = (
     "vmess://", "vless://", "trojan://", "ss://", "socks5://"
