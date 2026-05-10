@@ -12,7 +12,7 @@ from urllib3.util.retry import Retry
 
 # ---------------- CONFIG ----------------
 
-REPO_NAME = "YOUR_USERNAME/YOUR_REPOSITORY"
+REPO_NAME = "darkfriend1/vzalno"
 
 OUTPUT_FILE = "sub.txt"
 URLS_FILE = "urls.json"
