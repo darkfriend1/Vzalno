@@ -1,1 +1,7 @@
-
+[
+  "https://raw.githubusercontent.com/igareck/vpn-configs-for-russia/refs/heads/main/WHITE-CIDR-RU-all.txt",
+  "https://raw.githubusercontent.com/whoahaow/rjsxrd/refs/heads/main/githubmirror/bypass-unsecure/bypass-unsecure-all.txt",
+  "https://raw.githubusercontent.com/Temnuk/naabuzil/refs/heads/main/whitelist_full",
+  "https://raw.githubusercontent.com/zieng2/wl/main/vless_lite.txt",
+  "https://cvedcsub.vercel.app/configs/configs.txt"
+]
