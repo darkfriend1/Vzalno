@@ -1,3 +1,4 @@
+import os
 import requests
 import urllib3
 import base64
