@@ -1,5 +1,9 @@
 import requests
+import urllib3
 import base64
+import urllib.parse
+import html
+import json
 import re
 import socket
 
@@ -7,76 +11,197 @@ import socket
 # НАСТРОЙКИ
 # =========================
 
-SUB_URL = "https://raw.githubusercontent.com/darkfriend1/vzalno/main/sub.txt"
+OUTPUT_FILE = "sub.txt"
+URLS_FILE = "urls.json"
 
-MAX_CONFIGS = 300   # 👈 сколько конфигов в подписке
+# 👇 СКОЛЬКО КОНФИГОВ БУДЕТ В ПОДПИСКЕ
+MAX_CONFIGS = 92
 
-PROTOCOLS = (
-    "vmess://", "vless://", "trojan://", "ss://", "socks5://"
+# 👇 ПРОВЕРКА РАБОТОСПОСОБНОСТИ
+CHECK_ALIVE = True
+
+# 👇 ТАЙМАУТ ПРОВЕРКИ
+PING_TIMEOUT = 1.5
+
+# =========================
+# ПРОТОКОЛЫ
+# =========================
+
+PROTOCOL_PREFIXES = (
+    "vmess://",
+    "vless://",
+    "trojan://",
+    "ss://",
+    "ssr://",
+    "tuic://",
+    "hysteria://",
+    "hysteria2://",
+    "hy2://"
 )
+
+# =========================
+# ФЛАГИ СТРАН
+# =========================
 
 COUNTRY_FLAGS = {
     "germany": "🇩🇪 Германия",
     "de": "🇩🇪 Германия",
+
     "russia": "🇷🇺 Россия",
     "ru": "🇷🇺 Россия",
+
     "netherlands": "🇳🇱 Нидерланды",
     "nl": "🇳🇱 Нидерланды",
-    "usa": "🇺🇸 США",
-    "us": "🇺🇸 США",
+
     "france": "🇫🇷 Франция",
     "fr": "🇫🇷 Франция",
+
+    "usa": "🇺🇸 США",
+    "us": "🇺🇸 США",
+
+    "uk": "🇬🇧 Великобритания",
+    "england": "🇬🇧 Великобритания",
+
+    "japan": "🇯🇵 Япония",
+    "jp": "🇯🇵 Япония",
+
+    "singapore": "🇸🇬 Сингапур",
+    "sg": "🇸🇬 Сингапур",
+
+    "canada": "🇨🇦 Канада",
+    "ca": "🇨🇦 Канада",
+
+    "turkey": "🇹🇷 Турция",
+    "tr": "🇹🇷 Турция",
+
+    "poland": "🇵🇱 Польша",
+    "pl": "🇵🇱 Польша",
 }
 
 # =========================
-# ЗАГРУЗКА
+# SESSION
 # =========================
 
-def fetch_sub():
-    r = requests.get(SUB_URL, timeout=15)
+urllib3.disable_warnings(
+    urllib3.exceptions.InsecureRequestWarning
+)
+
+SESSION = requests.Session()
+
+SESSION.headers.update({
+    "User-Agent": "Mozilla/5.0"
+})
+
+# =========================
+# BASE64
+# =========================
+
+def try_decode_base64(data):
+
+    if "://" not in data:
+
+        try:
+            clean = "".join(data.split())
+
+            rem = len(clean) % 4
+
+            if rem:
+                clean += "=" * (4 - rem)
+
+            decoded = base64.b64decode(clean).decode(
+                "utf-8",
+                errors="ignore"
+            )
+
+            if any(
+                p in decoded.lower()
+                for p in PROTOCOL_PREFIXES
+            ):
+                return decoded
+
+        except:
+            pass
+
+    return data
+
+# =========================
+# СКАЧИВАНИЕ
+# =========================
+
+def fetch_data(url):
+
+    r = SESSION.get(
+        url,
+        timeout=20,
+        verify=False
+    )
+
+    r.raise_for_status()
+
     return r.text
 
 # =========================
-# BASE64 DECODE
+# ПОЛУЧЕНИЕ HOST:PORT
 # =========================
 
-def decode_base64(text):
+def extract_host_port(line):
+
     try:
-        missing = len(text) % 4
-        if missing:
-            text += "=" * (4 - missing)
-        return base64.b64decode(text).decode("utf-8", errors="ignore")
+
+        # VMESS
+        if line.startswith("vmess://"):
+
+            payload = line[8:]
+
+            rem = len(payload) % 4
+
+            if rem:
+                payload += "=" * (4 - rem)
+
+            decoded = base64.b64decode(payload).decode(
+                "utf-8",
+                errors="ignore"
+            )
+
+            j = json.loads(decoded)
+
+            host = j.get("add")
+            port = j.get("port")
+
+            if host and port:
+                return str(host), int(port)
+
+        # ДРУГИЕ ПРОТОКОЛЫ
+        m = re.search(
+            r"(?:@|//)([\w\.-]+):(\d+)",
+            line
+        )
+
+        if m:
+            return m.group(1), int(m.group(2))
+
     except:
-        return text
+        pass
+
+    return None
 
 # =========================
-# СТРАНА
+# ПРОВЕРКА ЖИВОСТИ
 # =========================
 
-def detect_country(text):
-    t = text.lower()
-    for key, name in COUNTRY_FLAGS.items():
-        if key in t:
-            return name
-    return "🌍 Unknown"
+def check_alive(host, port):
 
-# =========================
-# ПИНГ / ПРОВЕРКА ЖИВОСТИ
-# =========================
-
-def check_config_alive(config: str, timeout=1.5) -> bool:
     try:
-        match = re.search(r"@([^:/]+):(\d+)", config)
-        if not match:
-            return True
 
-        host = match.group(1)
-        port = int(match.group(2))
+        sock = socket.socket(
+            socket.AF_INET,
+            socket.SOCK_STREAM
+        )
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
+        sock.settimeout(PING_TIMEOUT)
 
         result = sock.connect_ex((host, port))
+
         sock.close()
 
         return result == 0
@@ -85,59 +210,192 @@ def check_config_alive(config: str, timeout=1.5) -> bool:
         return False
 
 # =========================
-# ПАРСИНГ
+# СТРАНА
 # =========================
 
-def parse_configs(raw):
-    raw = decode_base64(raw)
+def detect_country(text):
 
-    configs = []
-    for line in raw.splitlines():
-        line = line.strip()
-        if any(line.startswith(p) for p in PROTOCOLS):
-            configs.append(line)
+    t = text.lower()
 
-    return configs
+    for key, value in COUNTRY_FLAGS.items():
+
+        if key in t:
+            return value
+
+    return "🌍 Unknown"
 
 # =========================
-# СБОРКА ПОДПИСКИ
+# ИМЯ КОНФИГА
 # =========================
 
-def build_subscription(configs):
-    result = []
-    count = 0
+def rename_config(config, new_name):
 
-    for cfg in configs:
+    # vmess
+    if config.startswith("vmess://"):
 
-        if count >= MAX_CONFIGS:
-            break
+        try:
 
-        # ❌ проверка живости
-        if not check_config_alive(cfg):
-            continue
+            payload = config[8:]
 
-        country = detect_country(cfg)
-        name = f"{country} #{count + 1}"
+            rem = len(payload) % 4
 
-        result.append(f"{cfg}  # {name}")
-        count += 1
+            if rem:
+                payload += "=" * (4 - rem)
 
-    return "\n".join(result)
+            decoded = base64.b64decode(payload).decode(
+                "utf-8",
+                errors="ignore"
+            )
+
+            j = json.loads(decoded)
+
+            j["ps"] = new_name
+
+            encoded = base64.b64encode(
+                json.dumps(
+                    j,
+                    ensure_ascii=False
+                ).encode()
+            ).decode()
+
+            return "vmess://" + encoded
+
+        except:
+            return config
+
+    # остальные
+    if "#" in config:
+        config = config.split("#")[0]
+
+    return config + "#" + urllib.parse.quote(new_name)
 
 # =========================
 # MAIN
 # =========================
 
 def main():
-    raw = fetch_sub()
-    configs = parse_configs(raw)
 
-    final = build_subscription(configs)
+    if not os.path.exists(URLS_FILE):
 
-    with open("sub_clean.txt", "w", encoding="utf-8") as f:
-        f.write(final)
+        print("urls.json not found")
+        return
 
-    print(f"Готово: обработано {len(configs)} конфигов")
+    with open(
+        URLS_FILE,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        URLS = json.load(f)
+
+    all_configs = []
+
+    seen_full = set()
+    seen_hostport = set()
+
+    print()
+    print("START PARSER")
+    print()
+
+    for url in URLS:
+
+        print(f"Downloading: {url}")
+
+        try:
+
+            data = fetch_data(url)
+
+            data = try_decode_base64(data)
+
+            pattern = "|".join(
+                p.replace("://", "")
+                for p in PROTOCOL_PREFIXES
+            )
+
+            data = re.sub(
+                rf"({pattern})://",
+                r"\n\1://",
+                data,
+                flags=re.IGNORECASE
+            )
+
+            for line in data.splitlines():
+
+                if len(all_configs) >= MAX_CONFIGS:
+                    break
+
+                line = line.strip()
+
+                if not line.lower().startswith(
+                    PROTOCOL_PREFIXES
+                ):
+                    continue
+
+                processed = urllib.parse.unquote(
+                    html.unescape(line)
+                )
+
+                if line in seen_full:
+                    continue
+
+                seen_full.add(line)
+
+                hp = extract_host_port(line)
+
+                if hp:
+
+                    host, port = hp
+
+                    key = f"{host}:{port}"
+
+                    if key in seen_hostport:
+                        continue
+
+                    seen_hostport.add(key)
+
+                    # ПРОВЕРКА РАБОТОСПОСОБНОСТИ
+                    if CHECK_ALIVE:
+
+                        alive = check_alive(
+                            host,
+                            port
+                        )
+
+                        if not alive:
+                            continue
+
+                country = detect_country(processed)
+
+                name = (
+                    f"{country} "
+                    f"| #{len(all_configs)+1}"
+                )
+
+                line = rename_config(
+                    line,
+                    name
+                )
+
+                all_configs.append(line)
+
+            print("OK")
+
+        except Exception as e:
+
+            print("ERROR")
+            print(str(e))
+
+    with open(
+        OUTPUT_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        f.write("\n".join(all_configs))
+
+    print()
+    print(f"ГОТОВО: {len(all_configs)} конфигов")
+    print(f"Сохранено: {OUTPUT_FILE}")
 
 if __name__ == "__main__":
     main()
