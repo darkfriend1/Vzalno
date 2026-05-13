@@ -16,13 +16,13 @@ OUTPUT_FILE = "sub.txt"
 URLS_FILE = "urls.json"
 
 # 👇 СКОЛЬКО КОНФИГОВ БУДЕТ В ПОДПИСКЕ
-MAX_CONFIGS = 350
+MAX_CONFIGS = 999
 
 # 👇 ПРОВЕРКА РАБОТОСПОСОБНОСТИ
 CHECK_ALIVE = True
 
 # 👇 ТАЙМАУТ ПРОВЕРКИ
-PING_TIMEOUT = 2
+PING_TIMEOUT = 2.5
 
 # =========================
 # ПРОТОКОЛЫ
